@@ -13,6 +13,28 @@ function custom_theme_customize_register( $wp_customize ) {
     $wp_customize->get_setting( 'blogdescription' )->transport  = 'postMessage';
     $wp_customize->get_setting( 'header_textcolor' )->transport = 'postMessage';
 
+    // Add primary color setting
+    $wp_customize->add_setting(
+        'primary_color',
+        array(
+            'default'           => '#0073aa',
+            'sanitize_callback' => 'sanitize_hex_color',
+            'transport'         => 'postMessage',
+        )
+    );
+
+    $wp_customize->add_control(
+        new WP_Customize_Color_Control(
+            $wp_customize,
+            'primary_color',
+            array(
+                'label'    => __( 'Primary Color', 'custom-theme' ),
+                'section'  => 'colors',
+                'settings' => 'primary_color',
+            )
+        )
+    );
+
     if ( isset( $wp_customize->selective_refresh ) ) {
         $wp_customize->selective_refresh->add_partial(
             'blogname',
@@ -54,6 +76,26 @@ function custom_theme_customize_partial_blogdescription() {
  * Binds JS handlers to make Theme Customizer preview reload changes asynchronously.
  */
 function custom_theme_customize_preview_js() {
-    wp_enqueue_script( 'custom-theme-customizer', get_template_directory_uri() . '/assets/js/customizer.js', array( 'customize-preview' ), '20151215', true );
+    wp_enqueue_script( 'custom-theme-customizer', get_template_directory_uri() . '/assets/js/customizer.js', array( 'customize-preview' ), CUSTOM_THEME_VERSION, true );
 }
 add_action( 'customize_preview_init', 'custom_theme_customize_preview_js' );
+
+/**
+ * Generate CSS for the primary color.
+ */
+function custom_theme_customize_css() {
+    $primary_color = get_theme_mod( 'primary_color', '#0073aa' );
+    ?>
+    <style type="text/css">
+        .main-navigation a:hover,
+        .entry-title a:hover,
+        .read-more {
+            color: <?php echo esc_attr( $primary_color ); ?>;
+        }
+        .read-more {
+            background-color: <?php echo esc_attr( $primary_color ); ?>;
+        }
+    </style>
+    <?php
+}
+add_action( 'wp_head', 'custom_theme_customize_css' );
