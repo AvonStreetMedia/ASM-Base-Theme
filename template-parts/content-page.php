@@ -11,7 +11,7 @@
 
     <?php if ( has_post_thumbnail() ) : ?>
         <div class="post-thumbnail">
-            <?php the_post_thumbnail(); ?>
+            <?php the_post_thumbnail('', array('loading' => 'lazy')); ?>
         </div>
     <?php endif; ?>
 
