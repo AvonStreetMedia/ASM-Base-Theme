@@ -4,10 +4,11 @@
 
 // Wait for the DOM to be loaded
 document.addEventListener('DOMContentLoaded', function() {
-    // Mobile menu toggle
+    // Cache DOM elements for better performance
     const menuToggle = document.querySelector('.menu-toggle');
     const navigation = document.querySelector('.main-navigation');
     
+    // Mobile menu toggle
     if (menuToggle) {
         menuToggle.addEventListener('click', function() {
             navigation.classList.toggle('toggled');
