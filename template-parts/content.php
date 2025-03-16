@@ -17,7 +17,7 @@
             ?>
             <div class="entry-meta">
                 <?php
-                echo 'Posted on ' . get_the_date();
+                echo esc_html__('Posted on', 'custom-theme') . ' ' . get_the_date();
                 ?>
             </div>
         <?php endif; ?>
@@ -26,7 +26,7 @@
     <?php if ( has_post_thumbnail() && !is_singular() ) : ?>
         <div class="post-thumbnail">
             <a href="<?php the_permalink(); ?>">
-                <?php the_post_thumbnail(); ?>
+                <?php the_post_thumbnail('', array('loading' => 'lazy')); ?>
             </a>
         </div>
     <?php endif; ?>
