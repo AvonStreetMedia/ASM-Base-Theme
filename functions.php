@@ -41,11 +41,44 @@ function custom_theme_setup() {
             'script',
         )
     );
+    
+    // Add support for block editor features
+    add_theme_support('editor-styles');
+    add_theme_support('align-wide');
+    add_theme_support('responsive-embeds');
 }
 add_action( 'after_setup_theme', 'custom_theme_setup' );
 
 // Enqueue scripts and styles
 function custom_theme_scripts() {
-    wp_enqueue_style( 'custom-theme-style', get_stylesheet_uri(), array(), CUSTOM_THEME_VERSION );
+    // Properly enqueue main stylesheet separately instead of using @import
+    wp_enqueue_style( 'custom-theme-main', get_template_directory_uri() . '/assets/css/main.css', array(), CUSTOM_THEME_VERSION );
+    wp_enqueue_style( 'custom-theme-style', get_stylesheet_uri(), array('custom-theme-main'), CUSTOM_THEME_VERSION );
+    
+    // Add jQuery as dependency if it's used in script.js
+    wp_enqueue_script( 'custom-theme-script', get_template_directory_uri() . '/assets/js/script.js', array('jquery'), CUSTOM_THEME_VERSION, true );
+    
+    // Only load comment-reply script when needed
+    if (is_singular() && comments_open() && get_option('thread_comments')) {
+        wp_enqueue_script('comment-reply');
+    }
 }
 add_action( 'wp_enqueue_scripts', 'custom_theme_scripts' );
+
+// Add resource hints for performance
+function custom_theme_resource_hints($hints, $relation_type) {
+    if ('preconnect' === $relation_type) {
+        // Add resource hints for external fonts/resources if used
+        $hints[] = array(
+            'href' => '//fonts.googleapis.com',
+            'crossorigin',
+        );
+    }
+    return $hints;
+}
+add_filter('wp_resource_hints', 'custom_theme_resource_hints', 10, 2);
+
+// Include additional functionality
+require get_template_directory() . '/inc/template-functions.php';
+require get_template_directory() . '/inc/custom-header.php';
+require get_template_directory() . '/inc/customizer.php';
