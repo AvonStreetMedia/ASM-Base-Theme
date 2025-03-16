@@ -33,16 +33,20 @@
             $custom_theme_description = get_bloginfo( 'description', 'display' );
             if ( $custom_theme_description || is_customize_preview() ) :
                 ?>
-                <p class="site-description"><?php echo $custom_theme_description; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></p>
+                <p class="site-description"><?php echo esc_html($custom_theme_description); ?></p>
             <?php endif; ?>
         </div>
 
         <nav id="site-navigation" class="main-navigation">
+            <button class="menu-toggle" aria-controls="primary-menu" aria-expanded="false">
+                <?php esc_html_e('Menu', 'custom-theme'); ?>
+            </button>
             <?php
             wp_nav_menu(
                 array(
                     'theme_location' => 'menu-1',
                     'menu_id'        => 'primary-menu',
+                    'container_class' => 'primary-menu-container',
                 )
             );
             ?>
