@@ -1,0 +1,152 @@
+/**
+ * Table of Contents Styles
+ */
+
+.custom-theme-toc-container {
+    margin: 2em auto;
+    padding: 1.5em;
+    background-color: #f8f9fa;
+    border: 1px solid #eaeaea;
+    border-radius: 5px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.custom-theme-toc-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1em;
+    border-bottom: 1px solid #eaeaea;
+    padding-bottom: 0.5em;
+}
+
+.custom-theme-toc-header h2 {
+    margin: 0;
+    font-size: 1.25em;
+    color: #333;
+}
+
+.custom-theme-toc-toggle {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0.25em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #666;
+}
+
+.custom-theme-toc-toggle:hover {
+    color: #0073aa;
+}
+
+.custom-theme-toc-toggle:focus {
+    outline: 1px dotted #0073aa;
+}
+
+.custom-theme-toc-icon {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    position: relative;
+}
+
+.custom-theme-toc-icon:before,
+.custom-theme-toc-icon:after {
+    content: '';
+    position: absolute;
+    background-color: currentColor;
+    transition: transform 0.3s ease;
+}
+
+.custom-theme-toc-icon:before {
+    top: 7px;
+    left: 0;
+    width: 16px;
+    height: 2px;
+}
+
+.custom-theme-toc-icon:after {
+    top: 0;
+    left: 7px;
+    width: 2px;
+    height: 16px;
+}
+
+.custom-theme-toc-toggle[aria-expanded="false"] .custom-theme-toc-icon:after {
+    transform: rotate(90deg);
+}
+
+.custom-theme-toc-list-container {
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+}
+
+.custom-theme-toc-toggle[aria-expanded="false"] + .custom-theme-toc-list-container {
+    max-height: 0;
+}
+
+.custom-theme-toc-list,
+.custom-theme-toc-list-child {
+    list-style-type: none;
+    padding-left: 0;
+    margin: 0;
+}
+
+.custom-theme-toc-list-child {
+    padding-left: 1.5em;
+    margin-top: 0.5em;
+}
+
+.custom-theme-toc-list-item {
+    margin-bottom: 0.75em;
+    line-height: 1.4;
+}
+
+.custom-theme-toc-list-child .custom-theme-toc-list-item {
+    margin-bottom: 0.5em;
+}
+
+.custom-theme-toc-list-item:last-child {
+    margin-bottom: 0;
+}
+
+.custom-theme-toc-link {
+    color: #0073aa;
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.custom-theme-toc-link:hover {
+    color: #00a0d2;
+    text-decoration: underline;
+}
+
+/* Highlight active heading when scrolled to */
+.custom-theme-toc-highlight {
+    background-color: rgba(0, 115, 170, 0.1);
+}
+
+/* Different styles for heading levels */
+.custom-theme-toc-level-2 {
+    font-weight: 600;
+}
+
+.custom-theme-toc-level-3 {
+    font-weight: 500;
+}
+
+.custom-theme-toc-level-4 {
+    font-weight: 400;
+    font-size: 0.95em;
+}
+
+/* Responsive adaptations */
+@media screen and (max-width: 768px) {
+    .custom-theme-toc-container {
+        width: 100% !important; /* Override any inline width */
+        margin: 1.5em 0;
+        padding: 1em;
+    }
+}
