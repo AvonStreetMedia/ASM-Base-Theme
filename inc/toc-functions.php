@@ -1,6 +1,6 @@
 <?php
 /**
- * Table of Contents Functions
+ * Table of Contents Functions - Improved Implementation
  *
  * @package Custom_Theme
  */
@@ -23,7 +23,7 @@ class Custom_Theme_TOC {
         add_action( 'customize_register', array( __CLASS__, 'customizer_settings' ) );
         
         // Add TOC to post content
-        add_filter( 'the_content', array( __CLASS__, 'add_toc_to_content' ) );
+        add_filter( 'the_content', array( __CLASS__, 'add_toc_to_content' ), 100 ); // Higher priority to run after other filters
         
         // Add meta box for enabling/disabling TOC on individual posts
         add_action( 'add_meta_boxes', array( __CLASS__, 'add_toc_meta_box' ) );
@@ -37,8 +37,6 @@ class Custom_Theme_TOC {
     
     /**
      * Register customizer settings for TOC
-     *
-     * @param WP_Customize_Manager $wp_customize Theme Customizer object.
      */
     public static function customizer_settings( $wp_customize ) {
         // Add TOC section
@@ -101,7 +99,7 @@ class Custom_Theme_TOC {
             'section' => 'custom_theme_toc',
             'type'    => 'select',
             'choices' => array(
-                'top'     => __( 'Top of post', 'custom-theme' ),
+                'top'           => __( 'Top of post', 'custom-theme' ),
                 'after-first-p' => __( 'After first paragraph', 'custom-theme' ),
             ),
         ) );
@@ -117,9 +115,9 @@ class Custom_Theme_TOC {
             'section' => 'custom_theme_toc',
             'type'    => 'select',
             'choices' => array(
-                '100'     => __( 'Full Width', 'custom-theme' ),
-                '75'      => __( '75%', 'custom-theme' ),
-                '50'      => __( '50%', 'custom-theme' ),
+                '100' => __( 'Full Width', 'custom-theme' ),
+                '75'  => __( '75%', 'custom-theme' ),
+                '50'  => __( '50%', 'custom-theme' ),
             ),
         ) );
         
@@ -152,8 +150,6 @@ class Custom_Theme_TOC {
     
     /**
      * Render the TOC meta box
-     *
-     * @param WP_Post $post The post object.
      */
     public static function render_toc_meta_box( $post ) {
         // Add nonce for security
@@ -174,8 +170,6 @@ class Custom_Theme_TOC {
     
     /**
      * Save the TOC meta box data
-     *
-     * @param int $post_id The post ID.
      */
     public static function save_toc_meta_box( $post_id ) {
         // Check if our nonce is set
@@ -216,27 +210,33 @@ class Custom_Theme_TOC {
      * Enqueue TOC scripts and styles
      */
     public static function enqueue_scripts() {
-        wp_enqueue_style(
-            'custom-theme-toc',
-            get_template_directory_uri() . '/assets/css/toc.css',
-            array(),
-            CUSTOM_THEME_VERSION
-        );
-        
-        wp_enqueue_script(
-            'custom-theme-toc',
-            get_template_directory_uri() . '/assets/js/toc.js',
-            array( 'jquery' ),
-            CUSTOM_THEME_VERSION,
-            true
-        );
+        // Only load TOC assets on singular posts and pages
+        if ( is_singular() && ! is_admin() ) {
+            // Check if TOC is enabled in customizer and not disabled for this post
+            if ( 
+                get_theme_mod( 'custom_theme_toc_enable', true ) && 
+                ! get_post_meta( get_the_ID(), '_custom_theme_disable_toc', true )
+            ) {
+                wp_enqueue_style(
+                    'custom-theme-toc',
+                    get_template_directory_uri() . '/assets/css/toc.css',
+                    array(),
+                    CUSTOM_THEME_VERSION
+                );
+                
+                wp_enqueue_script(
+                    'custom-theme-toc',
+                    get_template_directory_uri() . '/assets/js/toc.js',
+                    array( 'jquery' ),
+                    CUSTOM_THEME_VERSION,
+                    true
+                );
+            }
+        }
     }
     
     /**
      * Add TOC to post content
-     *
-     * @param string $content The post content.
-     * @return string Modified content with TOC.
      */
     public static function add_toc_to_content( $content ) {
         // Bail if not a single post or page, or if in the admin area
@@ -254,8 +254,10 @@ class Custom_Theme_TOC {
             return $content;
         }
         
-        // Parse headings from content
-        $headings = self::get_headings_from_content( $content );
+        // Extract headings and add IDs if missing
+        $result = self::process_content_headings( $content );
+        $headings = $result['headings'];
+        $content = $result['content'];
         
         // Bail if not enough headings
         $min_headings = get_theme_mod( 'custom_theme_toc_min_headings', 3 );
@@ -286,60 +288,83 @@ class Custom_Theme_TOC {
     }
     
     /**
-     * Extract headings from content
-     *
-     * @param string $content The post content.
-     * @return array Array of heading data.
+     * Process content to extract headings and add IDs where missing
      */
-    private static function get_headings_from_content( $content ) {
+    private static function process_content_headings( $content ) {
         $headings = array();
+        $used_ids = array();
         
-        // Regular expression to extract headings
+        // Regular expression to extract headings (h2, h3, h4)
         $pattern = '/<h([2-4])(.*?)>(.*?)<\/h[2-4]>/i';
         
+        // Find all headings in the content
         if ( preg_match_all( $pattern, $content, $matches, PREG_SET_ORDER ) ) {
-            $count = 0;
             foreach ( $matches as $match ) {
-                $level = $match[1]; // Heading level (2, 3, 4)
-                $attrs = $match[2]; // Any attributes in the heading tag
-                $title = strip_tags( $match[3] ); // Heading text
+                $level = (int) $match[1];       // Heading level (2, 3, 4)
+                $attrs = $match[2];             // Attributes in the heading tag
+                $heading_text = $match[3];      // Inner text of the heading
+                $clean_text = strip_tags( $heading_text ); // Text without HTML tags
                 
-                // Generate a unique ID if none exists
-                if ( ! preg_match( '/id=(["\'])(.*?)\1/', $attrs, $id_match ) ) {
-                    $id = 'toc-heading-' . ++$count;
-                    // Add the ID to the heading in the content
-                    $new_heading = "<h{$level} id=\"{$id}\"{$attrs}>{$match[3]}</h{$level}>";
-                    $content = str_replace( $match[0], $new_heading, $content );
-                } else {
+                // Check if the heading already has an ID
+                if ( preg_match( '/id=(["\'])(.*?)\1/i', $attrs, $id_match ) ) {
                     $id = $id_match[2];
+                } else {
+                    // Create an ID from the heading text
+                    $id = self::generate_heading_id( $clean_text, $used_ids );
+                    
+                    // Add the ID to the heading in the content
+                    $new_heading = "<h{$level} id=\"{$id}\"{$attrs}>{$heading_text}</h{$level}>";
+                    $content = str_replace( $match[0], $new_heading, $content );
                 }
                 
+                // Store the heading data
                 $headings[] = array(
-                    'level' => (int) $level,
-                    'title' => $title,
-                    'id'    => $id,
+                    'level' => $level,
+                    'text'  => $clean_text,
+                    'id'    => $id
                 );
+                
+                // Track used IDs to avoid duplicates
+                $used_ids[] = $id;
             }
         }
         
-        return $headings;
+        return array(
+            'headings' => $headings,
+            'content'  => $content
+        );
+    }
+    
+    /**
+     * Generate a unique ID for a heading
+     */
+    private static function generate_heading_id( $text, $used_ids ) {
+        // Create a base ID from the heading text
+        $base_id = 'toc-' . sanitize_title( $text );
+        
+        // Make sure it's unique
+        $id = $base_id;
+        $counter = 1;
+        
+        while ( in_array( $id, $used_ids ) ) {
+            $id = $base_id . '-' . $counter++;
+        }
+        
+        return $id;
     }
     
     /**
      * Generate TOC HTML
-     *
-     * @param array $headings Array of heading data.
-     * @return string TOC HTML.
      */
     private static function generate_toc_html( $headings ) {
         $toc_title = get_theme_mod( 'custom_theme_toc_title', __( 'Table of Contents', 'custom-theme' ) );
         $toc_width = get_theme_mod( 'custom_theme_toc_width', '100' );
         $show_toggle = get_theme_mod( 'custom_theme_toc_toggle', true );
         
-        // Start TOC HTML
+        // Start TOC HTML with container
         $html = '<div class="custom-theme-toc-container" style="width: ' . esc_attr( $toc_width ) . '%;">';
         
-        // Add TOC title and toggle button
+        // Add TOC header with title and toggle button
         $html .= '<div class="custom-theme-toc-header">';
         $html .= '<h2>' . esc_html( $toc_title ) . '</h2>';
         
@@ -352,50 +377,85 @@ class Custom_Theme_TOC {
         
         $html .= '</div>'; // End .custom-theme-toc-header
         
-        // Start TOC list
+        // List container
         $html .= '<nav class="custom-theme-toc-list-container">';
-        $html .= '<ol class="custom-theme-toc-list">';
+        $html .= self::build_hierarchical_toc_list( $headings );
+        $html .= '</nav>'; // End .custom-theme-toc-list-container
         
-        // Variables to track hierarchy
-        $current_level = 2;
+        $html .= '</div>'; // End .custom-theme-toc-container
+        
+        return $html;
+    }
+    
+    /**
+     * Build the hierarchical TOC list
+     */
+    private static function build_hierarchical_toc_list( $headings ) {
+        // Early exit if no headings
+        if ( empty( $headings ) ) {
+            return '';
+        }
+        
+        // Initialize variables
+        $html = '<ol class="custom-theme-toc-list">';
+        $stack = array(); // Stack to track the current nesting level
         
         foreach ( $headings as $heading ) {
-            // Handle heading levels
-            if ( $heading['level'] > $current_level ) {
-                // Start a new sub-list for each level down
-                for ( $i = $current_level; $i < $heading['level']; $i++ ) {
-                    $html .= '<ol class="custom-theme-toc-list-child">';
-                }
-            } elseif ( $heading['level'] < $current_level ) {
-                // Close lists for each level up
-                for ( $i = $current_level; $i > $heading['level']; $i-- ) {
-                    $html .= '</ol></li>';
-                }
-            } elseif ( $current_level !== 2 ) {
-                // Same level, close previous item if not the first heading
-                $html .= '</li>';
+            $level = $heading['level'];
+            
+            // Handle the first heading
+            if ( empty( $stack ) ) {
+                $stack[] = $level;
+                $html .= '<li class="custom-theme-toc-list-item custom-theme-toc-level-' . esc_attr( $level ) . '">';
+                $html .= '<a href="#' . esc_attr( $heading['id'] ) . '" class="custom-theme-toc-link">' . esc_html( $heading['text'] ) . '</a>';
+                continue;
             }
             
-            // Add the current heading
-            $html .= '<li class="custom-theme-toc-list-item custom-theme-toc-level-' . esc_attr( $heading['level'] ) . '">';
-            $html .= '<a href="#' . esc_attr( $heading['id'] ) . '" class="custom-theme-toc-link">' . esc_html( $heading['title'] ) . '</a>';
+            // Current level in the stack
+            $current_level = end( $stack );
             
-            // Update current level
-            $current_level = $heading['level'];
+            // If this heading is at a deeper level, open a new sub-list
+            if ( $level > $current_level ) {
+                $html .= '<ol class="custom-theme-toc-list-child">';
+                $html .= '<li class="custom-theme-toc-list-item custom-theme-toc-level-' . esc_attr( $level ) . '">';
+                $stack[] = $level;
+            } 
+            // If this heading is at a higher level (less nested), close the appropriate number of lists
+            elseif ( $level < $current_level ) {
+                // Close lists until we reach the appropriate level
+                while ( !empty( $stack ) && end( $stack ) > $level ) {
+                    $html .= '</li></ol>';
+                    array_pop( $stack );
+                }
+                
+                // Close the current item
+                $html .= '</li>';
+                
+                // Start a new item at the current level
+                $html .= '<li class="custom-theme-toc-list-item custom-theme-toc-level-' . esc_attr( $level ) . '">';
+            } 
+            // If this heading is at the same level, close the previous item and start a new one
+            else {
+                $html .= '</li><li class="custom-theme-toc-list-item custom-theme-toc-level-' . esc_attr( $level ) . '">';
+            }
+            
+            // Add the link for this heading
+            $html .= '<a href="#' . esc_attr( $heading['id'] ) . '" class="custom-theme-toc-link">' . esc_html( $heading['text'] ) . '</a>';
         }
         
         // Close any remaining open lists
-        for ( $i = $current_level; $i >= 2; $i-- ) {
-            if ( $i === 2 ) {
-                $html .= '</li>';
-            } else {
-                $html .= '</ol></li>';
+        while ( !empty( $stack ) ) {
+            $html .= '</li>';
+            
+            // Only add </ol> if not the last item in the stack (main list)
+            if ( count( $stack ) > 1 ) {
+                $html .= '</ol>';
             }
+            
+            array_pop( $stack );
         }
         
         $html .= '</ol>';
-        $html .= '</nav>'; // End .custom-theme-toc-list-container
-        $html .= '</div>'; // End .custom-theme-toc-container
         
         return $html;
     }
@@ -406,9 +466,6 @@ add_action( 'after_setup_theme', array( 'Custom_Theme_TOC', 'init' ) );
 
 /**
  * Sanitize checkbox settings
- *
- * @param bool $checked Whether the checkbox is checked.
- * @return bool
  */
 function custom_theme_sanitize_checkbox( $checked ) {
     return ( isset( $checked ) && true === $checked ) ? true : false;
@@ -416,10 +473,6 @@ function custom_theme_sanitize_checkbox( $checked ) {
 
 /**
  * Sanitize select settings
- *
- * @param string $input The select option value.
- * @param WP_Customize_Setting $setting Setting instance.
- * @return string
  */
 function custom_theme_sanitize_select( $input, $setting ) {
     // Get the list of choices from the control
