@@ -71,3 +71,7 @@ require get_template_directory() . '/inc/template-functions.php';
 require get_template_directory() . '/inc/custom-header.php';
 require get_template_directory() . '/inc/customizer.php';
 require get_template_directory() . '/inc/toc-functions.php';
+
+
+// Include schema markup functionality
+require get_template_directory() . '/inc/schema-functions.php';
