@@ -66,6 +66,21 @@ function custom_theme_scripts() {
 }
 add_action( 'wp_enqueue_scripts', 'custom_theme_scripts' );
 
+// Enqueue admin-specific scripts
+function custom_theme_admin_scripts( $hook ) {
+    // Only load on post edit screens
+    if ( $hook == 'post.php' || $hook == 'post-new.php' ) {
+        wp_enqueue_script( 
+            'custom-theme-toc-admin', 
+            get_template_directory_uri() . '/assets/js/toc-admin.js', 
+            array( 'jquery' ), 
+            CUSTOM_THEME_VERSION, 
+            true 
+        );
+    }
+}
+add_action( 'admin_enqueue_scripts', 'custom_theme_admin_scripts' );
+
 // Include additional functionality
 require get_template_directory() . '/inc/template-functions.php';
 require get_template_directory() . '/inc/custom-header.php';
