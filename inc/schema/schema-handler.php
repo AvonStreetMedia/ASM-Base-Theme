@@ -28,7 +28,7 @@ class ASM_Schema_Handler {
 
 	public function inject_schema_markup() {
 		$schema_data = $this->generate_schema();
-		if ( $schema_data ) {
+		if ( ! empty( $schema_data ) ) {
 			echo '<script type="application/ld+json">' . wp_json_encode( $schema_data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) . '</script>';
 		}
 	}
@@ -41,29 +41,32 @@ class ASM_Schema_Handler {
 
 		$schema_data = [];
 
+		// Generate schemas based on the current page type
 		if ( is_single() && in_array( 'article', $this->enabled_schemas, true ) ) {
 			$schema_data[] = $this->get_article_schema();
 		} elseif ( is_front_page() && in_array( 'website', $this->enabled_schemas, true ) ) {
 			$schema_data[] = $this->get_website_schema();
-		} elseif ( is_product() && in_array( 'product', $this->enabled_schemas, true ) ) {
+		} elseif ( $this->is_woocommerce_active() && function_exists( 'is_product' ) && is_product() && in_array( 'product', $this->enabled_schemas, true ) ) {
 			$schema_data[] = $this->get_product_schema();
 		}
 
+		// Cache schema for 12 hours
 		set_transient( $this->cache_key, $schema_data, 12 * HOUR_IN_SECONDS );
+
 		return $schema_data;
 	}
 
 	private function get_article_schema() {
 		return [
-			"@context" => "https://schema.org",
-			"@type"    => "Article",
-			"headline" => get_the_title(),
-			"author"   => [
+			"@context"         => "https://schema.org",
+			"@type"            => "Article",
+			"headline"         => get_the_title(),
+			"author"           => [
 				"@type" => "Person",
 				"name"  => get_the_author()
 			],
-			"datePublished" => get_the_date( 'c' ),
-			"dateModified"  => get_the_modified_date( 'c' ),
+			"datePublished"    => get_the_date( 'c' ),
+			"dateModified"     => get_the_modified_date( 'c' ),
 			"mainEntityOfPage" => get_permalink()
 		];
 	}
@@ -78,25 +81,39 @@ class ASM_Schema_Handler {
 	}
 
 	private function get_product_schema() {
+		if ( ! $this->is_woocommerce_active() ) {
+			return null;
+		}
+
 		global $product;
-		if ( ! $product ) {
+
+		if ( ! is_a( $product, 'WC_Product' ) ) {
 			return null;
 		}
 
 		return [
-			"@context"  => "https://schema.org",
-			"@type"     => "Product",
-			"name"      => get_the_title(),
-			"image"     => get_the_post_thumbnail_url(),
-			"description" => get_the_excerpt(),
-			"offers"    => [
-				"@type"        => "Offer",
-				"priceCurrency"=> get_woocommerce_currency(),
-				"price"        => $product->get_price(),
-				"availability" => "https://schema.org/" . ( $product->is_in_stock() ? 'InStock' : 'OutOfStock' ),
-				"url"          => get_permalink()
+			"@context"     => "https://schema.org",
+			"@type"        => "Product",
+			"name"         => get_the_title(),
+			"image"        => get_the_post_thumbnail_url(),
+			"description"  => get_the_excerpt(),
+			"offers"       => [
+				"@type"         => "Offer",
+				"priceCurrency" => get_woocommerce_currency(),
+				"price"         => $product->get_price(),
+				"availability"  => "https://schema.org/" . ( $product->is_in_stock() ? 'InStock' : 'OutOfStock' ),
+				"url"           => get_permalink()
 			]
 		];
+	}
+
+	/**
+	 * Check if WooCommerce is active
+	 *
+	 * @return bool
+	 */
+	private function is_woocommerce_active() {
+		return class_exists( 'WooCommerce' );
 	}
 }
 
