@@ -72,6 +72,9 @@ require get_template_directory() . '/inc/custom-header.php';
 require get_template_directory() . '/inc/customizer.php';
 require get_template_directory() . '/inc/toc-functions.php';
 
-
 // Include schema markup functionality
-require get_template_directory() . '/inc/schema-functions.php';
+// ✅ Remove the old "schema-functions.php" file!
+require_once get_template_directory() . '/inc/schema/schema-handler.php';
+require_once get_template_directory() . '/inc/schema/schema-settings.php';
+require_once get_template_directory() . '/inc/schema/schema-meta-box.php';
+require_once get_template_directory() . '/inc/schema/schema-validator.php';
